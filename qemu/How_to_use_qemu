@@ -1,0 +1,59 @@
+How to use qemu
+===============
+
+1. Network setting
+    1. configure network
+        $ sudo apt install -y bridge-utils
+	    $ sudo brctl addbr br0
+	    $ sudo ifconfig br0 10.6.10.2 netmask 255.0.0.0 broadcast 10.255.255.255 up
+	    $ cat /etc/qemu-ifup
+	    #!/bin/sh
+        sudo ifconfig $1 0.0.0.0 promisc up
+        sudo brctl addif br0 $1
+	    $ sudo mkdir /etc/qemu
+	    $ cat /etc/qemu/bridge.conf
+	    allow br0
+	    $ sudo chmod 0640 /etc/qemu/bridge.conf
+
+    2. configure nfs mount 
+	    - way 1 for exports
+	        $ cat /etc/exports
+	        /tftpboot	10.0.0.0/255.0.0.0(rw,async,no_root_squash,no_subtree_check)
+	    - way 2 for exports
+	        $ cat /etc/exports
+	        /tftpboot	*(rw,sync,no_root_squash,no_all_squash)
+        sudo service nfs-kernel-server restart
+		(way 1 or way 2 are both OK.)
+
+    - For /etc/qemu-ifup
+        - `-net nic -net tap` 
+    - For /etc/qemu/bridge.conf
+        - `-netdev bridge,id=hn0 -device virtio-net-pci,netdev=hn0,id=nic1`
+
+3. Connect host usb
+    - `-usb -device usb-host,vendorid=0x05e3,productid=0x0747`
+
+4. Use esp directory as ESP(EFI System Partition)
+    - `-hda fat:rw:esp`
+
+5. Enable qemu monitor
+    - `-monitor tcp:localhost:1235,server,nowait`
+
+6. Disable graphic
+    - `-nographic`
+
+7. Save qemu debug log to degub.log
+    - `-debugcon file:debug.log -global isa-debugcon.iobase=0x402`
+
+8. Put the serial out the default output
+    - `-serial stdio`
+
+9. Use OVMF as firmware
+    - `-global driver=cfi.pflash01,property=secure,value=on`
+	- `-drive if=pflash,format=raw,unit=0,file=OVMF_CODE.fd,readonly=on`
+	- `-drive if=pflash,format=raw,unit=1,file=OVMF_VARS.fd`
+
+10. Enable ssh
+    - `-vga virtio`
+	- `-net nic,model=virtio -net user,hostfwd=tcp::9999-:22`
+	You can login system with `telnet localhost 9999`
